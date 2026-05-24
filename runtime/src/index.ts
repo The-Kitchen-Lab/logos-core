@@ -20,3 +20,14 @@ export type { AgentCard, Task, TaskState } from "./a2a/types.js";
 
 export { LezClient } from "./lez/client.js";
 export type { LezConfig } from "./lez/client.js";
+
+export { LogosChannel } from "./messaging/channel.js";
+export type { ChannelConfig } from "./messaging/channel.js";
+export { LogosInbox } from "./messaging/inbox.js";
+export type { MessageHandler } from "./messaging/inbox.js";
+export { encodeMessage, decodeMessage, LOGOS_MSG_TAG } from "./messaging/types.js";
+export type { LogosMessage, MessagePayload, MessageKind } from "./messaging/types.js";
+
+export { A2AMessagingTransport } from "./a2a/messaging-transport.js";
+export { TaskStore } from "./task-store.js";
+export type { StoredTask } from "./task-store.js";

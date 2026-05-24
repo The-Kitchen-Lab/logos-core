@@ -73,6 +73,8 @@ pub fn process(
             pending_approvals: Vec::new(),
             next_approval_id: 0,
             total_executions: 0,
+            last_message_nonce: 0,
+            total_messages_sent: 0,
         };
         return borsh::to_vec(&state)
             .map_err(|_| LogosCoreError::SerializationError);
@@ -182,6 +184,22 @@ pub fn process(
             agent_account_id: _,
         } => {
             require_owner(&state, caller_id)?;
+        }
+
+        // ── Logos Messaging ───────────────────────────────────────────────────
+
+        Instruction::SendMessage {
+            recipient_id: _,
+            nonce,
+            payload_hash: _,
+        } => {
+            // Record that a message was sent from this agent at this nonce.
+            // Replay protection: nonce must be strictly greater than last seen.
+            if nonce <= state.last_message_nonce {
+                return Err(LogosCoreError::InvalidInstruction);
+            }
+            state.last_message_nonce = nonce;
+            state.total_messages_sent += 1;
         }
 
         // ── Runtime-gated ─────────────────────────────────────────────────────

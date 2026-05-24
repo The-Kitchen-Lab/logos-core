@@ -88,6 +88,7 @@ const TAG = {
   RejectAction: 9,
   AuthorizeAgent: 10,
   RevokeAgentAuthorization: 11,
+  SendMessage: 12,
 } as const;
 
 // ─── Instruction types ────────────────────────────────────────────────────────
@@ -104,7 +105,8 @@ export type Instruction =
   | { tag: "ApproveAction"; approval_id: bigint }
   | { tag: "RejectAction"; approval_id: bigint }
   | { tag: "AuthorizeAgent"; agent_account_id: bigint; allowed_skills: string[] }
-  | { tag: "RevokeAgentAuthorization"; agent_account_id: bigint };
+  | { tag: "RevokeAgentAuthorization"; agent_account_id: bigint }
+  | { tag: "SendMessage"; recipient_id: bigint; nonce: bigint; payload_hash: Uint8Array };
 
 // ─── Encoder ──────────────────────────────────────────────────────────────────
 
@@ -149,6 +151,9 @@ export function encodeInstruction(ix: Instruction): Uint8Array {
       break;
     case "RevokeAgentAuthorization":
       w.u64(ix.agent_account_id);
+      break;
+    case "SendMessage":
+      w.u64(ix.recipient_id).u64(ix.nonce).bytes32(ix.payload_hash);
       break;
   }
 

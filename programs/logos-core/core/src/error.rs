@@ -22,4 +22,6 @@ pub enum LogosCoreError {
     AlreadyInitialized = 8,
     /// Pending approvals queue is full.
     ApprovalQueueFull = 9,
+    /// Instruction is malformed or replay detected (e.g. nonce too low).
+    InvalidInstruction = 10,
 }

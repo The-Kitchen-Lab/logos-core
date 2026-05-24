@@ -7,11 +7,13 @@ import { readFileSync, writeFileSync, existsSync } from "fs";
 export function deployCommand(): Command {
   return new Command("deploy")
     .description("Build and deploy the logos-core program to LEZ testnet")
-    .option("-s, --sequencer <url>", "Sequencer URL", process.env.LEZ_SEQUENCER_URL ?? "http://localhost:3000")
+    .option("-s, --sequencer <url>", "Sequencer URL", process.env.LEZ_SEQUENCER_URL ?? "http://localhost:3040")
+    .option("--indexer <url>", "Indexer JSON-RPC URL", process.env.LEZ_INDEXER_URL ?? "http://localhost:8779")
     .option("-k, --key <path>", "Runtime keypair file", "./agent-key.json")
-    .option("--threshold <amount>", "Spending threshold (native tokens)", "1000")
+    .option("--threshold <amount>", "Spending threshold (native tokens)", "1000000")
     .option("--period <blocks>", "Spending period in blocks", "1000")
     .option("--name <name>", "Agent name", "MyLogosAgent")
+    .option("--shielded", "Create a shielded (private) agent account", false)
     .action(async (opts) => {
       const spinner = ora("Connecting to sequencer…").start();
 
@@ -102,13 +104,23 @@ export function deployCommand(): Command {
         }
         spinner.succeed(`Registered ${defaultSkills.length} default skills`);
 
-        // 6. Save deployment config
+        // 6. Shielded account note
+        if (opts.shielded) {
+          spinner.info(
+            "Shielded mode: agent will use a PrivateOwned LEZ account. " +
+            "Ensure the wallet crate is available and the agent key includes a nullifier secret key."
+          );
+        }
+
+        // 7. Save deployment config
         const deployConfig = {
           agentName: opts.name,
           programId,
           agentAccountId: initRes.data?.account_id ?? keypair.accountId,
           runtimeAccountId: keypair.accountId,
           sequencerUrl: opts.sequencer,
+          indexerUrl: opts.indexer,
+          shielded: opts.shielded ?? false,
           spendingThreshold: parseInt(opts.threshold),
           periodBlocks: parseInt(opts.period),
           deployedAt: new Date().toISOString(),

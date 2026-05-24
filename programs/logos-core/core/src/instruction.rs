@@ -81,4 +81,20 @@ pub enum Instruction {
 
     /// Revoke a previously granted A2A authorisation.
     RevokeAgentAuthorization { agent_account_id: u64 },
+
+    // ── Logos Messaging ───────────────────────────────────────────────────────
+
+    /// Send a P2P message to another account via Logos Messaging.
+    ///
+    /// The full message payload is encoded in the instruction_data by the
+    /// TypeScript runtime using the `encodeMessage` utility.  On-chain we
+    /// record only the hash for auditability and replay protection.
+    SendMessage {
+        /// Recipient's account ID (u64).
+        recipient_id: u64,
+        /// Sender-assigned monotonic nonce — prevents replay.
+        nonce: u64,
+        /// SHA-256 of the encrypted payload (32 bytes).
+        payload_hash: [u8; 32],
+    },
 }

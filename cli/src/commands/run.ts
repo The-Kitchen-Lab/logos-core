@@ -6,6 +6,9 @@ import {
   createDefaultSkills,
   A2AServer,
   LezClient,
+  LogosChannel,
+  LogosInbox,
+  A2AMessagingTransport,
   type AgentRuntimeConfig,
   type InferenceBackend,
 } from "@logos-core/runtime";
@@ -30,6 +33,7 @@ export function runCommand(): Command {
         agentAccountId: string;
         runtimeAccountId: string;
         sequencerUrl: string;
+        indexerUrl?: string;
         spendingThreshold: number;
         periodBlocks: number;
       };
@@ -101,14 +105,30 @@ export function runCommand(): Command {
         agent.registry.register(skill);
       }
 
+      // ── HTTP A2A server (for local tooling / testing) ─────────────────────
       const server = new A2AServer(agent);
       server.listen(port);
 
+      // ── Logos Messaging (P2P, no intermediary server) ─────────────────────
+      const indexerUrl = cfg.indexerUrl ?? "http://localhost:8779";
+      const channel = new LogosChannel({
+        sequencerUrl: cfg.sequencerUrl,
+        indexerUrl,
+        accountId: cfg.agentAccountId,
+        programId: cfg.programId,
+        signerAccountId: cfg.runtimeAccountId,
+      });
+      const inbox = new LogosInbox(channel, "./inbox-cursor.json");
+      new A2AMessagingTransport(agent, channel, inbox);
+      inbox.start();
+
       console.log();
       console.log(chalk.green("✓ Agent runtime started"));
-      console.log(chalk.gray(`  A2A endpoint:  ${a2aUrl}`));
+      console.log(chalk.gray(`  A2A (HTTP):    ${a2aUrl}`));
+      console.log(chalk.gray(`  A2A (Logos):   account ${cfg.agentAccountId} (P2P via LEZ)`));
       console.log(chalk.gray(`  Agent card:    ${a2aUrl}/.well-known/agent.json`));
       console.log(chalk.gray(`  On-chain ID:   ${cfg.agentAccountId}`));
+      console.log(chalk.gray(`  Indexer:       ${indexerUrl}`));
       console.log(chalk.gray(`  Skills loaded: ${agent.registry.list().length}`));
       console.log();
       console.log(chalk.gray("Press Ctrl+C to stop."));

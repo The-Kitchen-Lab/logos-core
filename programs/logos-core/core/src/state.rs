@@ -120,6 +120,10 @@ pub struct AgentState {
     pub next_approval_id: u64,
     /// Total number of skill executions (for analytics / on-chain record).
     pub total_executions: u64,
+    /// Monotonic nonce of the last SendMessage instruction — replay protection.
+    pub last_message_nonce: u64,
+    /// Total number of messages sent by this agent via Logos Messaging.
+    pub total_messages_sent: u64,
 }
 
 impl AgentState {
