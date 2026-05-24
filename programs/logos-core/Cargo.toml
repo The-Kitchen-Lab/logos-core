@@ -1,0 +1,13 @@
+[package]
+name = "logos_core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+logos_core_types = { path = "core" }
+nssa_core = { workspace = true }
+serde = { workspace = true }
+borsh = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }

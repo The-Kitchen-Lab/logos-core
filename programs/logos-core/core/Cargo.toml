@@ -1,0 +1,10 @@
+[package]
+name = "logos_core_types"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+borsh = { workspace = true }
+sha2 = { workspace = true }

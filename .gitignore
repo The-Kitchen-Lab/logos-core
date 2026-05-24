@@ -1,0 +1,31 @@
+# Rust
+/target
+Cargo.lock
+
+# Node.js
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+*.env.local
+agent.config.json
+agent-key.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/
