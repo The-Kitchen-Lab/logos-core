@@ -77,6 +77,19 @@ export function runCommand(): Command {
         programId: cfg.programId,
       });
 
+      // ── Logos Messaging channel (created before agent so approval callback can use it) ──
+      const indexerUrl = cfg.indexerUrl ?? "http://localhost:8779";
+      const channel = new LogosChannel({
+        sequencerUrl: cfg.sequencerUrl,
+        indexerUrl,
+        accountId: cfg.agentAccountId,
+        programId: cfg.programId,
+        signerAccountId: cfg.runtimeAccountId,
+      });
+
+      // Pending approval promises: correlationId → { resolve, reject }
+      const pendingApprovals = new Map<string, { resolve: (v: boolean) => void }>();
+
       const agentConfig: AgentRuntimeConfig = {
         name: cfg.agentName,
         ownerId: cfg.runtimeAccountId,
@@ -84,17 +97,42 @@ export function runCommand(): Command {
         a2aUrl,
         spendingThreshold: BigInt(cfg.spendingThreshold),
         periodMs: cfg.periodBlocks * 5000, // ~5s per block on testnet
+        approvalRetries: 3,
+        approvalRetryDelayMs: 30_000,
+        skillTimeoutMs: 120_000,
         onApprovalRequired: async (req) => {
-          console.log();
-          console.log(chalk.yellow("⚠ Owner approval required"));
-          console.log(`  Skill:   ${req.skillId}`);
-          console.log(`  Action:  ${req.actionDescription}`);
-          console.log(`  Cost:    ${req.estimatedCost} tokens`);
-          console.log();
-          // In production, send a notification to the owner's Logos app.
-          // For CLI testing, auto-deny above-threshold actions.
-          console.log(chalk.red("  Auto-denied (no owner UI connected)."));
-          return false;
+          console.log(chalk.yellow(`\n⚠  Approval required: ${req.skillId} (${req.estimatedCost} tokens)`));
+
+          // Send approval request to owner via Logos Messaging (P2P, no server needed).
+          const correlationId = `approval-${req.approvalId}`;
+          try {
+            await channel.send(cfg.runtimeAccountId, {
+              kind: "owner:chat",
+              correlationId,
+              body: {
+                type: "approval_request",
+                approvalId: req.approvalId,
+                skillId: req.skillId,
+                actionDescription: req.actionDescription,
+                estimatedCost: req.estimatedCost.toString(),
+              },
+            });
+            console.log(chalk.gray(`  → Approval request sent to owner via Logos Messaging (corr: ${correlationId})`));
+          } catch (err) {
+            console.error(chalk.red(`  Messaging failed: ${String(err)}`));
+            return false;
+          }
+
+          // Wait up to 5 minutes for the owner to respond via Logos Messaging.
+          return new Promise<boolean>((resolve) => {
+            pendingApprovals.set(correlationId, { resolve });
+            setTimeout(() => {
+              if (pendingApprovals.delete(correlationId)) {
+                console.log(chalk.red(`  Approval timed out for ${req.skillId}`));
+                resolve(false);
+              }
+            }, 5 * 60 * 1000);
+          });
         },
       };
 
@@ -109,16 +147,23 @@ export function runCommand(): Command {
       const server = new A2AServer(agent);
       server.listen(port);
 
-      // ── Logos Messaging (P2P, no intermediary server) ─────────────────────
-      const indexerUrl = cfg.indexerUrl ?? "http://localhost:8779";
-      const channel = new LogosChannel({
-        sequencerUrl: cfg.sequencerUrl,
-        indexerUrl,
-        accountId: cfg.agentAccountId,
-        programId: cfg.programId,
-        signerAccountId: cfg.runtimeAccountId,
-      });
+      // ── Logos Messaging inbox + A2A transport (reuse the channel above) ────
       const inbox = new LogosInbox(channel, "./inbox-cursor.json");
+
+      // Route incoming approval responses to the pending approval map.
+      inbox.onMessage(async (msg) => {
+        if (msg.payload.kind === "agent:chat") {
+          const body = msg.payload.body as { type?: string; approved?: boolean };
+          if (body.type === "approval_response") {
+            const pending = pendingApprovals.get(msg.payload.correlationId);
+            if (pending) {
+              pendingApprovals.delete(msg.payload.correlationId);
+              pending.resolve(body.approved === true);
+            }
+          }
+        }
+      });
+
       new A2AMessagingTransport(agent, channel, inbox);
       inbox.start();
 
