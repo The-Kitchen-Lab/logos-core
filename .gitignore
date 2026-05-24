@@ -1,6 +1,6 @@
 # Rust
 /target
-Cargo.lock
+dispatch-cli/target/
 
 # Node.js
 node_modules/

@@ -388,4 +388,123 @@ mod tests {
         let state = AgentState::try_from_slice(&state_bytes).unwrap();
         assert!(state.pending_approvals[0].approved);
     }
+
+    #[test]
+    fn per_skill_spending_cap_enforced() {
+        let state_bytes = init_state();
+        let reg = Instruction::RegisterSkill {
+            id: "sc:analyze".into(),
+            implementation_hash: [2u8; 32],
+            description: "Analyze skill".into(),
+            spending_cap: Some(50), // tight per-skill cap
+        };
+        let state_bytes = process(OWNER, BLOCK, &state_bytes, &enc(&reg)).unwrap();
+
+        // cost 51 > per-skill cap 50 → blocked even though global threshold is 1_000
+        let exec = Instruction::RecordExecution {
+            skill_id: "sc:analyze".into(),
+            cost: 51,
+            result_summary: "".into(),
+        };
+        let result = process(OWNER, BLOCK, &state_bytes, &enc(&exec));
+        assert_eq!(result, Err(LogosCoreError::SpendingLimitExceeded));
+
+        // cost 50 == cap → allowed
+        let exec_ok = Instruction::RecordExecution {
+            skill_id: "sc:analyze".into(),
+            cost: 50,
+            result_summary: "ok".into(),
+        };
+        let state_bytes = process(OWNER, BLOCK, &state_bytes, &enc(&exec_ok)).unwrap();
+        let state = AgentState::try_from_slice(&state_bytes).unwrap();
+        assert_eq!(state.total_executions, 1);
+    }
+
+    #[test]
+    fn disabled_skill_rejected() {
+        let state_bytes = init_state();
+        let reg = Instruction::RegisterSkill {
+            id: "sc:build".into(),
+            implementation_hash: [3u8; 32],
+            description: "Build skill".into(),
+            spending_cap: None,
+        };
+        let state_bytes = process(OWNER, BLOCK, &state_bytes, &enc(&reg)).unwrap();
+
+        let disable = Instruction::SetSkillEnabled {
+            skill_id: "sc:build".into(),
+            enabled: false,
+        };
+        let state_bytes = process(OWNER, BLOCK, &state_bytes, &enc(&disable)).unwrap();
+
+        let exec = Instruction::RecordExecution {
+            skill_id: "sc:build".into(),
+            cost: 1,
+            result_summary: "".into(),
+        };
+        let result = process(OWNER, BLOCK, &state_bytes, &enc(&exec));
+        assert_eq!(result, Err(LogosCoreError::SkillDisabled));
+    }
+
+    #[test]
+    fn lifetime_spend_accumulates() {
+        let state_bytes = init_state();
+        let reg = Instruction::RegisterSkill {
+            id: "sc:implement".into(),
+            implementation_hash: [4u8; 32],
+            description: "Implement skill".into(),
+            spending_cap: None,
+        };
+        let state_bytes = process(OWNER, BLOCK, &state_bytes, &enc(&reg)).unwrap();
+
+        let exec = |cost: u128| Instruction::RecordExecution {
+            skill_id: "sc:implement".into(),
+            cost,
+            result_summary: "done".into(),
+        };
+
+        let state_bytes = process(OWNER, BLOCK, &state_bytes, &enc(&exec(100))).unwrap();
+        let state_bytes = process(OWNER, BLOCK, &state_bytes, &enc(&exec(200))).unwrap();
+        let state_bytes = process(OWNER, BLOCK, &state_bytes, &enc(&exec(300))).unwrap();
+
+        let state = AgentState::try_from_slice(&state_bytes).unwrap();
+        assert_eq!(state.total_executions, 3);
+        let skill = state.skills.iter().find(|s| s.id == "sc:implement").unwrap();
+        assert_eq!(skill.lifetime_spend, 600);
+    }
+
+    #[test]
+    fn unknown_skill_execution_fails() {
+        let state_bytes = init_state();
+        let exec = Instruction::RecordExecution {
+            skill_id: "sc:nonexistent".into(),
+            cost: 1,
+            result_summary: "".into(),
+        };
+        let result = process(OWNER, BLOCK, &state_bytes, &enc(&exec));
+        assert_eq!(result, Err(LogosCoreError::SkillNotFound));
+    }
+
+    #[test]
+    fn paused_agent_blocks_execution() {
+        let state_bytes = init_state();
+        let reg = Instruction::RegisterSkill {
+            id: "sc:test".into(),
+            implementation_hash: [5u8; 32],
+            description: "Test skill".into(),
+            spending_cap: None,
+        };
+        let state_bytes = process(OWNER, BLOCK, &state_bytes, &enc(&reg)).unwrap();
+
+        let pause = Instruction::SetPaused { paused: true };
+        let state_bytes = process(OWNER, BLOCK, &state_bytes, &enc(&pause)).unwrap();
+
+        let exec = Instruction::RecordExecution {
+            skill_id: "sc:test".into(),
+            cost: 1,
+            result_summary: "".into(),
+        };
+        let result = process(OWNER, BLOCK, &state_bytes, &enc(&exec));
+        assert_eq!(result, Err(LogosCoreError::SkillDisabled));
+    }
 }

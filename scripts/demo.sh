@@ -29,9 +29,9 @@ NODE_MAJOR=$(node -e "console.log(process.versions.node.split('.')[0])")
 # ── 2. Build Rust ─────────────────────────────────────────────────────────────
 
 info "Building Rust on-chain program…"
-cargo test  2>&1 | tail -10
+cargo test 2>&1
 info "cargo test passed ✓"
-cargo build --release 2>&1 | tail -5
+cargo build --release 2>&1 | grep -E "Compiling|Finished|error"
 info "cargo build --release passed ✓"
 
 # ── 3. Install Node.js dependencies ──────────────────────────────────────────

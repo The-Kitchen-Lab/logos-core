@@ -2,6 +2,7 @@
 members = [
     "programs/logos-core/core",
     "programs/logos-core",
+    "programs/logos-core/guest",
 ]
 resolver = "2"
 
@@ -19,3 +20,7 @@ thiserror = "1"
 
 [workspace.lints.rust]
 unused = "warn"
+
+# Disable thiserror (pulls in getrandom on RISC-V)
+[profile.dev]
+strip = "none"

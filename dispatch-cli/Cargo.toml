@@ -1,0 +1,36 @@
+[workspace]
+
+[package]
+name = "dispatch-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "dispatch"
+path = "src/main.rs"
+
+[[bin]]
+name = "compute_id"
+path = "src/bin/compute_id.rs"
+
+[dependencies]
+# LEZ crates (via local clone)
+nssa = { path = "/tmp/logos-execution-zone/nssa" }
+sequencer_service_rpc = { path = "/tmp/logos-execution-zone/sequencer/service/rpc", features = ["client"] }
+nssa_core = { path = "/tmp/logos-execution-zone/nssa/core" }
+common = { path = "/tmp/logos-execution-zone/common" }
+
+# Logos Core types
+logos_core_types = { path = "../programs/logos-core/core" }
+
+# Serialization
+risc0-binfmt = "3.0.2"
+borsh = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+hex = "0.4"
+
+# Async + utilities
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+bs58 = "0.5"
