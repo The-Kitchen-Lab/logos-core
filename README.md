@@ -11,6 +11,8 @@ On-chain trust enforcement for autonomous AI agents: cryptographic spending cont
 
 ## Demo
 
+https://github.com/The-Kitchen-Lab/logos-core/raw/main/docs/logos-demo.mp4
+
 [![asciicast](https://asciinema.org/a/lohSSQFNCCftqtph.svg)](https://asciinema.org/a/lohSSQFNCCftqtph)
 
 ---
