@@ -4,7 +4,6 @@
 
 On-chain trust enforcement for autonomous AI agents: cryptographic spending controls, skill registry, and agent-to-agent coordination — all anchored in a RISC-V program running inside ZK proofs.
 
-[![Demo](https://img.shields.io/badge/demo-asciinema-orange)](https://asciinema.org/a/lohSSQFNCCftqtph)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ---
@@ -12,8 +11,6 @@ On-chain trust enforcement for autonomous AI agents: cryptographic spending cont
 ## Demo
 
 https://github.com/The-Kitchen-Lab/logos-core/raw/main/docs/logos-demo.mp4
-
-[![asciicast](https://asciinema.org/a/lohSSQFNCCftqtph.svg)](https://asciinema.org/a/lohSSQFNCCftqtph)
 
 ---
 
